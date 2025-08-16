@@ -1,97 +1,93 @@
-const todoInput = document.getElementById("todo-input");
+// Elements
+const taskInput = document.getElementById("task-input");
+const prioritySelect = document.getElementById("priority-select");
 const dueDateInput = document.getElementById("due-date");
-const priorityInput = document.getElementById("priority");
-const addBtn = document.getElementById("add-btn");
-const todoList = document.getElementById("todo-list");
+const addTaskBtn = document.getElementById("add-task");
+const taskList = document.getElementById("task-list");
 const filterBtns = document.querySelectorAll(".filter-btn");
+const searchInput = document.getElementById("search");
+const themeToggle = document.getElementById("theme-toggle");
 
-let todos = JSON.parse(localStorage.getItem("todos")) || [];
-let currentFilter = "all";
+// Load saved tasks
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-addBtn.addEventListener("click", () => {
-  const text = todoInput.value.trim();
-  const dueDate = dueDateInput.value;
-  const priority = priorityInput.value;
+// Render tasks
+function renderTasks(filter = "all", search = "") {
+  taskList.innerHTML = "";
 
-  if (text === "") {
-    alert("Please enter a task!");
-    return;
-  }
-
-  todos.push({
-    text,
-    completed: false,
-    dueDate,
-    priority
+  let filtered = tasks.filter(task => {
+    if (filter === "active" && task.completed) return false;
+    if (filter === "completed" && !task.completed) return false;
+    if (!task.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
   });
 
-  saveAndRender();
+  filtered.forEach((task, index) => {
+    const li = document.createElement("li");
+    li.className = `task ${task.completed ? "completed" : ""}`;
 
-  todoInput.value = "";
+    li.innerHTML = `
+      <div class="task-left">
+        <input type="checkbox" ${task.completed ? "checked" : ""} onchange="toggleComplete(${index})">
+        <span class="title">${task.title}</span>
+        <span class="priority ${task.priority}">${task.priority}</span>
+        ${task.dueDate ? `<span class="due-date">📅 ${task.dueDate}</span>` : ""}
+      </div>
+      <button class="delete-btn" onclick="deleteTask(${index})">✖</button>
+    `;
+
+    taskList.appendChild(li);
+  });
+
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+// Add task
+addTaskBtn.addEventListener("click", () => {
+  if (taskInput.value.trim() === "") return;
+  tasks.push({
+    title: taskInput.value,
+    priority: prioritySelect.value,
+    dueDate: dueDateInput.value,
+    completed: false,
+  });
+  taskInput.value = "";
   dueDateInput.value = "";
-  priorityInput.value = "Medium";
+  renderTasks();
 });
 
-function renderTodos() {
-  todoList.innerHTML = "";
-
-  let filtered = todos;
-  if (currentFilter === "active") {
-    filtered = todos.filter(t => !t.completed);
-  } else if (currentFilter === "completed") {
-    filtered = todos.filter(t => t.completed);
-  }
-
-  filtered.forEach((todo, index) => {
-    const li = document.createElement("li");
-    li.className = `todo-item ${todo.completed ? "completed" : ""}`;
-    li.innerHTML = `
-      <div>
-        <input type="checkbox" ${todo.completed ? "checked" : ""} 
-          onclick="toggleComplete(${index})">
-        <span>${todo.text} 
-          <small>(${todo.priority}${todo.dueDate ? " - " + todo.dueDate : ""})</small>
-        </span>
-      </div>
-      <div class="actions">
-        <button class="edit-btn" onclick="editTask(${index})">Edit</button>
-        <button class="delete-btn" onclick="deleteTask(${index})">Delete</button>
-      </div>
-    `;
-    todoList.appendChild(li);
-  });
-}
-
+// Toggle complete
 function toggleComplete(index) {
-  todos[index].completed = !todos[index].completed;
-  saveAndRender();
+  tasks[index].completed = !tasks[index].completed;
+  renderTasks();
 }
 
+// Delete task
 function deleteTask(index) {
-  todos.splice(index, 1);
-  saveAndRender();
+  tasks.splice(index, 1);
+  renderTasks();
 }
 
-function editTask(index) {
-  const newText = prompt("Edit task:", todos[index].text);
-  if (newText) {
-    todos[index].text = newText.trim();
-    saveAndRender();
-  }
-}
-
+// Filters
 filterBtns.forEach(btn => {
   btn.addEventListener("click", () => {
-    filterBtns.forEach(b => b.classList.remove("active"));
+    document.querySelector(".filter-btn.active").classList.remove("active");
     btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    renderTodos();
+    renderTasks(btn.dataset.filter, searchInput.value);
   });
 });
 
-function saveAndRender() {
-  localStorage.setItem("todos", JSON.stringify(todos));
-  renderTodos();
-}
+// Search
+searchInput.addEventListener("input", () => {
+  const activeFilter = document.querySelector(".filter-btn.active").dataset.filter;
+  renderTasks(activeFilter, searchInput.value);
+});
 
-renderTodos();
+// Dark mode toggle
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  themeToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+});
+
+// Initial render
+renderTasks();
